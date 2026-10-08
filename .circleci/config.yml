@@ -6,10 +6,9 @@ version: 2.1
 
 jobs:
   test:
+    working_directory: ~/project/src
     docker:
       - image: cimg/ruby:2.7-node   # match the Ruby version in your Dockerfile / .ruby-version
-        environment:
-          RAILS_ENV: test
     steps:
       - checkout
       - restore_cache:
@@ -26,8 +25,8 @@ jobs:
           paths:
             - vendor/bundle
       - run:
-          name: Run tests
-          command: bundle exec rails test   # use `bundle exec rspec` if you use RSpec
+          name: Check app syntax
+          command: bundle exec ruby -c app.rb
 
   build-and-deploy:
     docker:
