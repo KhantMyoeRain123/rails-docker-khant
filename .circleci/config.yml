@@ -10,7 +10,8 @@ jobs:
     docker:
       - image: cimg/ruby:2.7-node   # match the Ruby version in your Dockerfile / .ruby-version
     steps:
-      - checkout
+      - checkout:
+          path: ~/project
       - restore_cache:
           keys:
             - bundle-v1-{{ checksum "Gemfile.lock" }}
