@@ -1,0 +1,70 @@
+version: 2.1
+
+# Required project environment variables (CircleCI > Project Settings > Environment Variables):
+#   HEROKU_API_KEY   - from `heroku authorizations:create` (long-lived) or the Heroku dashboard
+#   HEROKU_APP_NAME  - rails-docker-khant
+
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:2.7-node   # match the Ruby version in your Dockerfile / .ruby-version
+        environment:
+          RAILS_ENV: test
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - bundle-v1-{{ checksum "Gemfile.lock" }}
+            - bundle-v1-
+      - run:
+          name: Install gems
+          command: |
+            bundle config set path vendor/bundle
+            bundle install --jobs 4 --retry 3
+      - save_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          paths:
+            - vendor/bundle
+      - run:
+          name: Run tests
+          command: bundle exec rails test   # use `bundle exec rspec` if you use RSpec
+
+  build-and-deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Log in to Heroku registry
+          command: |
+            echo "$HEROKU_API_KEY" | docker login --username=_ --password-stdin registry.heroku.com
+      - run:
+          name: Build image
+          command: |
+            docker build \
+              -t registry.heroku.com/$HEROKU_APP_NAME/web .
+      - run:
+          name: Push image
+          command: |
+            docker push registry.heroku.com/$HEROKU_APP_NAME/web
+      - run:
+          name: Release image
+          command: |
+            IMAGE_ID=$(docker inspect registry.heroku.com/$HEROKU_APP_NAME/web --format='{{.Id}}')
+            curl --fail -X PATCH "https://api.heroku.com/apps/$HEROKU_APP_NAME/formation" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+              -H "Authorization: Bearer $HEROKU_API_KEY" \
+              -d "{\"updates\": [{\"type\": \"web\", \"docker_image\": \"$IMAGE_ID\"}]}"
+
+workflows:
+  test-build-deploy:
+    jobs:
+      - test
+      - build-and-deploy:
+          requires:
+            - test
+          filters:
+            branches:
+              only: main
