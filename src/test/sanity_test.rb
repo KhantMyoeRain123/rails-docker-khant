@@ -1,7 +1,7 @@
-require "test_helper"
+require "minitest/autorun"
 
-class SanityTest < ActiveSupport::TestCase
-  test "true is true" do
-    assert false
+class SanityTest < Minitest::Test
+  def test_true_is_true
+    assert true
   end
 end

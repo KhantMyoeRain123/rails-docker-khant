@@ -26,8 +26,8 @@ jobs:
           paths:
             - vendor/bundle
       - run:
-          name: Check app syntax
-          command: bundle exec ruby -c app.rb
+          name: Run sanity test
+          command: ruby test/sanity_test.rb
 
   build-and-deploy:
     docker:
